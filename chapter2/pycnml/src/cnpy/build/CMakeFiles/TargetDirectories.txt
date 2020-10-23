@@ -1,0 +1,9 @@
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/install.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/list_install_components.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/edit_cache.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/rebuild_cache.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/cnpy.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/example1.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/install/local.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/cnpy-static.dir
+/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build/CMakeFiles/install/strip.dir

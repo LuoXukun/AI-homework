@@ -1,0 +1,1 @@
+/usr/bin/c++    -std=c++11   CMakeFiles/example1.dir/example1.cpp.o  -o example1 -rdynamic libcnpy.so -lz -Wl,-rpath,/home/Cambricon-Test/shiyan_ch2_3_0610/pycnml/src/cnpy/build 
