@@ -1,0 +1,6 @@
+/usr/local/lib/libcnpy.so
+/usr/local/lib/libcnpy.a
+/usr/local/include/cnpy.h
+/usr/local/bin/mat2npz
+/usr/local/bin/npy2mat
+/usr/local/bin/npz2mat
