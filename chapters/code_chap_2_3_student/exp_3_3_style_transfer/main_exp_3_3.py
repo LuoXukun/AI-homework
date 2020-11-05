@@ -18,6 +18,65 @@ def computeMse(data1,data2):
     
     return sum(squared_error) / len(squared_error)
 
+def test_speed_up_conv_pool():
+    test_data = np.random.rand(1, 256, 24, 40)
+    #test_dloss = np.random.rand(1, 256, 24, 40)
+    test_dloss = np.random.rand(1, 256, 12, 20)
+    test_filter = np.random.rand(256, 3, 3, 256)
+    test_bias = np.random.rand(256)
+
+    conv = ConvolutionalLayer(3, 256, 256, 1, 1)
+    conv.init_param()
+    conv.load_param(test_filter, test_bias)
+    pool = MaxPoolingLayer(2, 2)
+    stamp = time.time()
+    conv_forward_result = conv.forward(test_data)
+    pool_forward_result = pool.forward(conv_forward_result)
+    conv_forward_time = time.time()-stamp
+    print('forward raw time: %f ms'%(conv_forward_time*1000))
+    stamp = time.time()
+    pool_backward_result = pool.backward(test_dloss)
+    conv_backward_result = conv.backward(pool_backward_result)
+    conv_backward_time = time.time()-stamp
+    print('backward raw time: %f ms'%(conv_backward_time*1000))
+
+    speedup_conv = ConvolutionalLayer(3, 256, 256, 1, 1, 1)
+    speedup_conv.init_param()
+    speedup_conv.load_param(test_filter, test_bias)
+    speedup_pool = MaxPoolingLayer(2, 2, 1)
+    stamp = time.time()
+    speedup_conv_forward_result = speedup_conv.forward(test_data)
+    speedup_pool_forward_result = speedup_pool.forward(speedup_conv_forward_result)
+    speedup_conv_forward_time = time.time()-stamp
+    print('forward speedup time: %f ms'%(speedup_conv_forward_time*1000))
+    stamp = time.time()
+    speedup_pool_backward_result = speedup_pool.backward(test_dloss)
+    speedup_conv_backward_result = speedup_conv.backward(speedup_pool_backward_result)
+    speedup_conv_backward_time = time.time()-stamp
+    print('backward speedup time: %f ms'%(speedup_conv_backward_time*1000))
+
+    speedup_conv_forward_mse = computeMse(conv_forward_result.flatten(), speedup_conv_forward_result.flatten())
+    speedup_conv_backward_mse = computeMse(conv_backward_result.flatten(), speedup_conv_backward_result.flatten())
+    """ If you want to test the mse of d_weight and d_bias, please uncomment the code in Convolution Layer -> backward_speedup """
+    #mse_d_weight = computeMse(conv.d_weight.flatten(), speedup_conv.d_weight.flatten())
+    #mse_d_bias = computeMse(conv.d_bias.flatten(), speedup_conv.d_bias.flatten())
+    mse_d_pool_forward = computeMse(pool_forward_result.flatten(), speedup_pool_forward_result.flatten())
+    mse_d_pool_backward = computeMse(pool_backward_result.flatten(), speedup_pool_backward_result.flatten())
+    #print('mse_d_weight: ' + str(mse_d_weight))
+    #print('mse_d_bias: ' + str(mse_d_bias))
+    print('speedup_conv_forward_mse: ' + str(speedup_conv_forward_mse))
+    print("speedup_conv_backward_mse: " + str(speedup_conv_backward_mse))
+    print("mse_d_pool_forward: " + str(mse_d_pool_forward))
+    print("mse_d_pool_backward: " + str(mse_d_pool_backward))
+    if speedup_conv_forward_mse < 0.003 and speedup_conv_backward_mse < 0.003:
+        print('SPEEDUP TEST PASS.')
+    else:
+        print('SPEEDUP TEST FAILED.')
+        exit()
+
+    print('FORWARD SPEEDUP RATIO: %f'%(conv_forward_time / speedup_conv_forward_time))
+    print('BACKWARD SPEEDUP RATIO: %f'%(conv_backward_time / speedup_conv_backward_time))
+
 def test_speed_up():
     test_data = np.random.rand(1, 256, 24, 40)
     test_dloss = np.random.rand(1, 256, 24, 40)
@@ -61,7 +120,8 @@ def test_speed_up():
 
 if __name__ == '__main__':
     np.random.seed(1234)
-    test_speed_up()
+    #test_speed_up()
+    test_speed_up_conv_pool()
     print('-------------------------')
     CONTENT_LOSS_LAYERS = ['relu4_2']
     STYLE_LOSS_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
@@ -94,22 +154,22 @@ if __name__ == '__main__':
         style_diff = np.zeros(transfer_image.shape)
         for layer in CONTENT_LOSS_LAYERS:
             # TODO： 计算内容损失的前向传播
-            current_loss = _______________________
+            current_loss = content_loss_layer.forward(transfer_layers[layer], content_layers[layer])
             content_loss = np.append(content_loss, current_loss)
             # TODO： 计算内容损失的反向传播
             dloss = content_loss_layer.backward(transfer_layers[layer], content_layers[layer])
-            content_diff += _______________________
+            content_diff += vgg.backward(dloss, layer)
         for layer in STYLE_LOSS_LAYERS:
             # TODO： 计算风格损失的前向传播
-            current_loss = _______________________
+            current_loss = style_loss_layer.forward(transfer_layers[layer], style_layers[layer])
             style_loss = np.append(style_loss, current_loss)
             # TODO： 计算风格损失的反向传播
             dloss = style_loss_layer.backward(transfer_layers[layer], style_layers[layer])
-            style_diff += _______________________
+            style_diff += vgg.backward(dloss, layer)
         total_loss = ALPHA * np.mean(content_loss) + BETA * np.mean(style_loss)
         image_diff = ALPHA * content_diff / len(CONTENT_LOSS_LAYERS) + BETA * style_diff / len(STYLE_LOSS_LAYERS)
         # TODO： 利用Adam优化器对风格迁移图像进行更新
-        transfer_image = _______________________
+        transfer_image = adam_optimizer.update(transfer_image, image_diff)
         if step % 1 == 0:
             print('Step %d, loss = %f' % (step, total_loss), content_loss, style_loss)
             print('cost time: %f'%(time.time() - start))
