@@ -73,6 +73,12 @@ def test_power_diff_with_bigger_data():
     err = sum(abs(res - output))/sum(output)
     print("C++ op err rate= " + str(err*100) + "%")
 
+    if err < 0.003:
+        print('TEST C++ OP WITH BIGGER DATA PASS.')
+    else:
+        print('TEST C++ OP WITH BIGGER DATA FAILED.')
+        exit(0)
+
     start = time.time()
     res = power_diff_numpy(input_x, input_y,input_pow)
     end = time.time()

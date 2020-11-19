@@ -12,3 +12,7 @@ whl文件：env/tensorflow-v1.10/virtualenv_mlu/tensorflow_mlu-1.14.0-cp27-cp27m
 
 需要提交的文件为 power_diff_numpy.py、power_difference_test_cpu.py、transform_cpu.py、tensorflow_mlu-1.14.0-cp27-cp27mu-linux_x86_64.whl、
 udnie_power_diff_numpy.pb、udnie_power_diff.pb，将以上文件压缩为 zip 包提交。
+
+注意：
+1. 要把env/tensorflow-v1.10/build_tensorflow−v1.10_mlu.sh中的jobs_num改为16，否则会因为任务数过多而报莫名其妙的错误。
+2. 千万千万要执行source build_tensorflow−v1.10_mlu.sh后再在env/tensorflow-v1.10/中执行source env.sh，否则source build_tensorflow−v1.10_mlu.sh会失败。

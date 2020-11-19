@@ -6606,6 +6606,7 @@ filegroup(
         "population_count_op.h",
         "winograd_transform.h",
         ":android_extended_ops_headers",
+        "cwise_op_power_difference.cc",
     ] + select({
         ":xsmm_convolutions": [
             "xsmm_conv2d.h",
