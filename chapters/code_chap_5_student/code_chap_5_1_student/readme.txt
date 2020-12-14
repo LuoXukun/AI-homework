@@ -6,7 +6,7 @@
 4、集成到tensorflow: 补齐src/tf-implementation/tf-add-power-diff/power_difference.cc和cwise_op_power_difference_mlu.h，按照readme.txt提示拷入到对应文件夹，重新编译tensorflow
 5、框架算子测试：补齐src/online_mlu/power_difference_test_bcl.py
 6、在线推理和生成离线模型：补齐src/online_mlu/power_difference_test_bcl.pysrc/online_mlu/transform_mlu.py
-7、离线推理：补齐src/offline/src/inference.cpp
+7、离线推理：补齐src/offline/src/inference.cpp, 进入src/offline/build文件夹，执行"cmake ..","make"，生成可执行文件
 
 自动测试需要提交的文件：
 ├── inference.cpp

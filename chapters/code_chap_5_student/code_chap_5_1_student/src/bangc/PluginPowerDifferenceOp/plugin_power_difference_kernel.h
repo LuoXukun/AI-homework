@@ -30,7 +30,7 @@ extern "C" {
 typedef uint16_t half;
 
 // TODO：BCL接口定义
-void PowerDifferenceKernel(---);
+void PowerDifferenceKernel(half* input1, half* input2, int pow, half* output, int len);
 
 #ifdef __cplusplus
 }

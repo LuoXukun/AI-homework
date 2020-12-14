@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import os
 import tensorflow as tf
 from tensorflow.python.platform import gfile
@@ -22,7 +24,7 @@ def run_ori_pb():
                 inter_op_parallelism_threads=1,
                             intra_op_parallelism_threads=1)
     # TODO：完成MLU Config配置
-    ...
+    config.mlu_options.save_offline_model = True
     model_name = os.path.basename(args.ori_pb).split(".")[0]
     image_name = os.path.basename(args.image).split(".")[0]
     config.mlu_options.offline_model_name = '../../models/offline_models/' + model_name + '.cambricon'
@@ -57,7 +59,7 @@ def run_ori_power_diff_pb():
                 inter_op_parallelism_threads=1,
                             intra_op_parallelism_threads=1)
     # TODO：完成MLU Config配置
-    ...
+    config.mlu_options.save_offline_model = True
     model_name = os.path.basename(args.ori_power_diff_pb).split(".")[0]
     image_name = os.path.basename(args.image).split(".")[0]
     config.mlu_options.offline_model_name = '../../models/offline_models/' + model_name + '.cambricon'
@@ -74,9 +76,15 @@ def run_ori_power_diff_pb():
 
         with tf.Session(config=config) as sess:
             # TODO：完成PowerDifference Pb模型的推理
-            ...
+            sess.graph.as_default()
+            sess.run(tf.global_variables_initializer())
+
+            input_differ = sess.graph.get_tensor_by_name('moments_15/PowerDifference_z:0')
+            input_tensor = sess.graph.get_tensor_by_name('X_content:0')
+            output_tensor = sess.graph.get_tensor_by_name('add_37:0')
+
             start_time = time.time()
-            ret =sess.run()
+            ret = sess.run(output_tensor,feed_dict={input_differ:2,input_tensor:[X]})
             end_time = time.time()
             print("C++ inference(MLU) time is: ",end_time-start_time)
             img1 = tf.reshape(ret,[256,256,3])
@@ -89,7 +97,7 @@ def run_numpy_pb():
                 inter_op_parallelism_threads=1,
                             intra_op_parallelism_threads=1)
     # TODO：完成MLU Config配置
-    ...
+    config.mlu_options.data_parallelism = 16
     model_name = os.path.basename(args.numpy_pb).split(".")[0]
     image_name = os.path.basename(args.image).split(".")[0]
 
@@ -103,10 +111,20 @@ def run_numpy_pb():
         X = cv.resize(img, (256, 256))
         with tf.Session(config=config) as sess:
             # TODO：完成Numpy版本 Pb模型的推理
-            ...
+            sess.graph.as_default()
+            sess.run(tf.global_variables_initializer())
+
+            input_tensor = sess.graph.get_tensor_by_name('X_content:0')
+            input_differ = sess.graph.get_tensor_by_name('moments_15/PowerDifference:0')
+            output_tensor = sess.graph.get_tensor_by_name('add_37:0')
+            conv_tensor = sess.graph.get_tensor_by_name('Conv2D_13:0')
+            grad_tensor = sess.graph.get_tensor_by_name('moments_15/StopGradient:0')
+            temp_feed = {input_tensor:[X]}
+            conv,grad = sess.run([conv_tensor,grad_tensor],feed_dict=temp_feed)
+            differ = power_diff_numpy(conv,grad,2)
+
             start_time = time.time()
-            ...
-            ret = sess.run(...)
+            ret = sess.run(output_tensor,feed_dict={input_differ:differ,input_tensor:[X]})
             end_time = time.time()
             print("Numpy inference(MLU) time is: ",end_time-start_time)
             img1 = tf.reshape(ret,[256,256,3])
@@ -115,6 +133,9 @@ def run_numpy_pb():
 
 
 if __name__ == '__main__':
+    print("-"*20 + "run_ori_pb" + "-"*20 + "\n")
     run_ori_pb()
+    print("-"*20 + "run_ori_power_diff_pb" + "-"*20 + "\n")
     run_ori_power_diff_pb()
+    print("-"*20 + "run_numpy_pb" + "-"*20 + "\n")
     run_numpy_pb()
