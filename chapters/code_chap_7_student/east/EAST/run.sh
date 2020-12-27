@@ -38,7 +38,7 @@ fi
 
 # may change the path of the model
 if [[ "${mode}" =~ "sbc" ]]; then
-   MODEL_PATH="${AICSE_MODELS_MODEL_HOME}/east/east_int8_sbc.pb"
+   MODEL_PATH="../models/east_int8_sbc.pb"
 fi
 echo $MODEL_PATH
 DATASET_HOME=${AICSE_MODELS_DATA_HOME}

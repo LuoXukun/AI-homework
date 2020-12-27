@@ -934,9 +934,9 @@ tensorflow::Status ComputePowerDifferenceOp(MLUBaseOp* op,
 
 //TODO:补全下面create和compute函数声明
 /******************************************************/
-tensorflow::Status CreateSBCOp(......);
+tensorflow::Status CreateSBCOp(MLUBaseOp** op, MLUTensor* input, MLUTensor* output,int batch_num_);
 
-tensorflow::Status ComputeSBCOp(......);
+tensorflow::Status ComputeSBCOp(MLUBaseOp* op, void* input, void* output, MLUCnrtQueue* queue);
 //SBC
 /******************************************************/
 

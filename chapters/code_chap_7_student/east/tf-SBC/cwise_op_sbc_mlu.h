@@ -26,13 +26,21 @@ class MLUSBCOp : public MLUOpKernel {
     Tensor input = ctx->input(0);
 
     // TODO:参数检查与处理
-    ......
+    const Tensor& a = ctx->input(0);
+    int batch_size = a.dim_size(0);
+
+    /* string op_parameter = ctx->op_kernel().type_string() + "/" + input.shape().DebugString();
+
+    MLU_OP_CHECK_UNSUPPORTED(mlustream_exec, op_parameter, ctx); */
+
+    TensorShape shape = TensorShape(input.shape());
 
     //TODO:输出形状推断及输出内存分配
-    ......
+    Tensor* output;
+    OP_REQUIRES_OK(ctx, ctx->allocate_output(0, shape, &output));
 
     // 调用MLUStream层接口完成算子计算
-    ......
+    OP_REQUIRES_OK(ctx, stream->SBC(ctx, &input, output, batch_size));
   }
 };
 

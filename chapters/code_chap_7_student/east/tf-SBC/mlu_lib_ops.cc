@@ -1941,7 +1941,8 @@ tensorflow::Status ComputePowerDifferenceOp(MLUBaseOp* op,
 tensorflow::Status CreateSBCOp(MLUBaseOp** op, MLUTensor* input,
                                MLUTensor* output,int batch_num_) {
 
-  ......
+  MLUTensor* inputs_ptr[1] = {input};
+  MLUTensor* outputs_ptr[1] = {output};
 
   CNML_RETURN_STATUS(cnmlCreatePluginSBCOp(op, inputs_ptr, outputs_ptr,batch_num_));
 }
@@ -1952,7 +1953,8 @@ tensorflow::Status ComputeSBCOp(
                     void* output,
                     MLUCnrtQueue* queue) {
 
-  ......
+  void* inputs_ptr[1] = {input};
+  void* outputs_ptr[1] = {output};
 
   CNML_RETURN_STATUS(cnmlComputePluginSBCOpForward(
                                          op, inputs_ptr, 1, outputs_ptr, 1,queue));

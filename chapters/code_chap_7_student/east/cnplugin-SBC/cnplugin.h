@@ -1448,7 +1448,36 @@ cnmlStatus_t cnmlDestroyPluginAnchorGereratorOpParam(
 /* cnmlPluginSBC operation start */
 /* ================================= */
 
+struct cnmlPluginSBCOpParam
+{
+    int batch_num_;
+};
+typedef cnmlPluginSBCOpParam* cnmlPluginSBCOpParam_t;
 
+cnmlStatus_t cnmlCreatPluginSBCOpParam(
+    cnmlPluginSBCOpParam_t *param,
+    int batch_num_
+);
+
+cnmlStatus_t cnmlDestroyPluginSBCOpParam(
+    cnmlPluginSBCOpParam_t *param
+);
+
+cnmlStatus_t cnmlCreatePluginSBCOp(
+    cnmlBaseOp_t *op,
+    cnmlTensor_t *SBC_input_tensors,
+    cnmlTensor_t *SBC_output_tensors,
+    int batch_num_
+);
+
+cnmlStatus_t cnmlComputePluginSBCOpForward(
+    cnmlBaseOp_t op,
+    void **inputs,
+    int input_num,
+    void **outputs,
+    int output_num,
+    cnrtQueue_t queue
+);
 
 /* ------------------------------- */
 /* cnmlPluginSBC operation end */

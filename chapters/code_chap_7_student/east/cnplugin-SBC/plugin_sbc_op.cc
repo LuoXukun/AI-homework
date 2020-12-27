@@ -55,6 +55,32 @@ cnmlStatus_t cnmlCreatePluginSBCOp(
     ){
     
     //补全cnmlCreatePluginSBCOp
+    int input_num = 1;
+    int output_num = 1;
+
+    void** InterfacePtr;
+    InterfacePtr = reinterpret_cast<void**>(&SBCKernel);
+
+    cnrtKernelParamsBuffer_t params;
+    cnrtGetKernelParamsBuffer(&params);
+
+    // Passing param
+    cnrtKernelParamsBufferMarkInput(params);    // input
+    cnrtKernelParamsBufferMarkOutput(params);   // output
+    cnrtKernelParamsBufferAddParam(params, &batch_num_, sizeof(int));   // batch_size
+    
+    cnmlCreatePluginOp(
+        op, 
+        "SBC",
+        InterfacePtr,
+        params,
+        SBC_input_tensors,
+        input_num,
+        SBC_output_tensors,
+        output_num,
+        nullptr,
+        0
+    );
                         
     cnrtDestroyKernelParamsBuffer(params);
     return CNML_STATUS_SUCCESS;
@@ -72,7 +98,18 @@ cnmlStatus_t cnmlComputePluginSBCOpForward(
     cnrtQueue_t queue
     ){
    
-    //补全cnmlComputePluginSBCOpForward 
+    //补全cnmlComputePluginSBCOpForward
+    cnmlComputePluginOpForward_V4(
+        op,
+        nullptr,
+        inputs,
+        input_num,
+        nullptr,
+        outputs,
+        output_num,
+        queue,
+        nullptr
+    ); 
     
     return CNML_STATUS_SUCCESS;
 
