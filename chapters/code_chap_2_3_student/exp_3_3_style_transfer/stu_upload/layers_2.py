@@ -92,8 +92,10 @@ class ConvolutionalLayer(object):
         width = self.input.shape[3] + self.padding * 2
         self.input_pad = np.zeros([self.input.shape[0], self.input.shape[1], height, width])
         self.input_pad[:, :, self.padding:self.padding+self.input.shape[2], self.padding:self.padding+self.input.shape[3]] = self.input
-        height_out = (height - self.kernel_size) / self.stride + 1
-        width_out = (width - self.kernel_size) / self.stride + 1
+        height_out = int((height - self.kernel_size) / self.stride + 1)
+        width_out = int((width - self.kernel_size) / self.stride + 1)
+        
+        # bug fix
         self.output = np.zeros([self.input.shape[0], self.channel_out, height_out, width_out])
         for idxn in range(self.input.shape[0]):
             for idxc in range(self.channel_out):
@@ -214,8 +216,10 @@ class MaxPoolingLayer(object):
         #start_time = time.time()
         self.input = input # [N, C, H, W]
         self.max_index = np.zeros(self.input.shape)
-        height_out = (self.input.shape[2] - self.kernel_size) / self.stride + 1
-        width_out = (self.input.shape[3] - self.kernel_size) / self.stride + 1
+        height_out = int((self.input.shape[2] - self.kernel_size) / self.stride + 1)
+        width_out = int((self.input.shape[3] - self.kernel_size) / self.stride + 1)
+        
+        # bug fix
         self.output = np.zeros([self.input.shape[0], self.input.shape[1], height_out, width_out])
         for idxn in range(self.input.shape[0]):
             for idxc in range(self.input.shape[1]):
