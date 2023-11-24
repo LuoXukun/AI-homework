@@ -8,6 +8,7 @@ import torch
 import cv2
 import numpy
 import time
+import torch_mlu
 
 class COCODataSet(Dataset):
 
@@ -38,6 +39,7 @@ class COCODataSet(Dataset):
         image = image.permute(2, 0, 1)
         return image
 
+
 class ResBlock(nn.Module):
 
     def __init__(self, c):
@@ -54,7 +56,7 @@ class ResBlock(nn.Module):
             # 执行实例归一化
             nn.InstanceNorm2d(c)
         )
-        
+
     def forward(self, x):
         #TODO: 返回残差运算的结果
         return x + self.layer(x)
@@ -121,6 +123,7 @@ class TransNet(nn.Module):
     def forward(self, x):
         return self.layer(x)
     
+    
 
 
 if __name__ == '__main__':
@@ -128,26 +131,34 @@ if __name__ == '__main__':
     g_net = TransNet()
     # TODO: 从/models文件夹下加载网络参数到g_net中
     g_net.load_state_dict(torch.load("./models/fst.pth"))
-    print("g_net build  PASS!\n")
+    print("g_net build PASS!\n")
+    # TODO：将g_net模型转化为eval,并转化为浮点类型，输出得到net
+    net = g_net.eval().float()
     data_set = COCODataSet()
     print("load COCODataSet PASS!\n")
-
     batch_size = 1
     data_group = DataLoader(data_set,batch_size,True,drop_last=True)
-
+    example_forward_input = torch.rand((1,3,512,512),dtype = torch.float)
+    #TODO: 使用JIT对net模型进行trace，得到net_trace
+    net_trace = torch.jit.trace(net, example_forward_input)
     for i, image in enumerate(data_group):
+        print(f"The {i} image will be predicted.")
         image_c = image.cpu()
-        #print(image_c.shape)
+        # 将image_c图片拷贝到MLU设备，得到input_image_c
+        input_image_c = image_c.to("mlu")
+        # 将net_trace模型拷贝到MLU设备，得到net_mlu
+        net_mlu = net_trace.to("mlu")
         start = time.time()
-        # TODO: 计算 g_net,得到image_g
-        image_g = g_net(image)
+        # 对input_image_c计算 net_mlu,得到image_g_mlu
+        image_g_mlu = net_mlu(input_image_c)
+        image_g_mlu = image_g_mlu.cpu()
         end = time.time()
         delta_time = end - start
-        print("Inference (CPU) processing time: %s" % delta_time)
-        #TODO: 利用save_image函数将tensor形式的生成图像image_g以及输入图像image_c以jpg格式左右拼接的形式保存在/out/cpu/文件夹下
-        if image_c.shape != image_g.shape:
+        print("Inference (mfus) processing time: %s" % delta_time)
+        # 利用save_image函数将tensor形式的生成图像image_g_mlu以及输入图像image_c以jpg格式左右拼接的形式保存在/out/mlu_cnnl_mfus/文件夹下
+        if image_c.shape != image_g_mlu.shape:
             # 调整 image_g_mlu 的尺寸以匹配 image_c
-            image_g = F.interpolate(image_g, size=image_c.shape[2:], mode='bilinear', align_corners=False)
+            image_g_mlu = F.interpolate(image_g_mlu, size=image_c.shape[2:], mode='bilinear', align_corners=False)
         
-        save_image(torch.cat((image_c, image_g), -1), f"./out/mlu_cnnl_mfus/image_{i}.jpg")
+        save_image(torch.cat((image_c, image_g_mlu), -1), f"./out/mlu_cnnl_mfus/image_{i}.jpg")
     print("TEST RESULT PASS!\n")
