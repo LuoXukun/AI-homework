@@ -6,6 +6,7 @@ Maintainer: Samurai *2023*
 ## Change logs
 + chapter 2与chapter 3的代码还能接着用
 + chapter 3.3 bug fix for 2023 version
+    + 因为他们要求从`pycnml`更新为`pycnnl`，今后没有`pycnml`了，所以要用`pycnnl`的包重新写一份。
 + chapter 4往后几乎全部重写
     + chapter 4.1 - chapter 4.3作业内容更新，故全部重写
     + 4.1 - 4.3仅仅改动了`stu_upload`路径中的code，未改动其他部分。

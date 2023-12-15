@@ -18,7 +18,7 @@
 
 ## 提交要求
 
-![image-20231215232509859](D:\Code_Space\Python\Intelli-system\AI-homework\chapters\code_chap_5_student\code_chap_5_student_2023\README\image-20231215232509859.png)
+![image-20231215232509859](./README/image-20231215232509859.png)
 
 
 
