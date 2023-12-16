@@ -127,7 +127,7 @@ if __name__ == '__main__':
     STYLE_LOSS_LAYERS = ['relu1_1', 'relu2_1', 'relu3_1', 'relu4_1', 'relu5_1']
     NOISE = 0.5
     ALPHA, BETA = 1, 500
-    TRAIN_STEP = 100
+    TRAIN_STEP = 5  # modify: less step
     LEARNING_RATE = 1.0
     IMAGE_HEIGHT, IMAGE_WIDTH = 192, 320
 

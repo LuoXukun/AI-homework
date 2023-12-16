@@ -1,157 +1,153 @@
-# coding:utf-8
-from __future__ import print_function
-import sys
-sys.path.insert(0, 'src')
-import os
-import scipy.misc
-import tensorflow as tf
-from utils import save_img, get_img, exists, list_files
-from argparse import ArgumentParser
-from collections import defaultdict
+from torchvision.models import vgg19
+from torch import nn
+from zipfile import ZipFile
+from torch.utils.data import Dataset, DataLoader
+from torchvision.utils import save_image
+import torch.nn.functional as F
+import torch
+import cv2
+import numpy
 import time
-import json
-import subprocess
-import numpy as np
 
-BATCH_SIZE = 4
-DEVICE = '/cpu:0'
+class COCODataSet(Dataset):
 
-os.putenv('MLU_VISIBLE_DEVICES','')
+    def __init__(self):
+        super(COCODataSet, self).__init__()
+        self.zip_files = ZipFile('./data/train2014_small.zip')
+        self.data_set = []
+        for file_name in self.zip_files.namelist():
+            if file_name.endswith('.jpg'):
+                self.data_set.append(file_name)
 
-# get img_shape
-def ffwd(data_in, paths_out, model, device_t='', batch_size=1):
-    assert len(paths_out) > 0
-    is_paths = type(data_in[0]) == str
-    # TODO：如果 data_in 是保存输入图像的文件路径，即 is_paths 为 True，则读入第一张图像，由于 pb 模型的输入维度为 1 × 256 × 256 × 3, 因此需将输入图像的形状调整为 256 × 256，并传递给 img_shape；
-    # 如果 data_in 是已经读入图像并转化成数组形式的数据，即 is_paths 为 False，则直接获取图像的 shape 特征 img_shape
-    if is_paths:
-        # Get the shape when loading the first image.
-        img_shape = get_img(data_in[0], (256, 256, 3)).shape
-    else:
-        # Get the shape from data_in[0] when the images have been loaded.
-        img_shape = data_in[0].shape
+    def __len__(self):
+        return len(self.data_set)
 
-    g = tf.Graph()
-    config = tf.ConfigProto(allow_soft_placement=True,
-                    inter_op_parallelism_threads=1,
-                    intra_op_parallelism_threads=1)
-    with g.as_default():
-        with tf.gfile.FastGFile(model,'rb') as f:
-            graph_def = tf.GraphDef()
-            graph_def.ParseFromString(f.read())
-            tf.import_graph_def(graph_def, name='')
+    def __getitem__(self, item):
+        file_path = self.data_set[item]
+        image = self.zip_files.read(file_path)
+        image = numpy.asarray(bytearray(image), dtype='uint8')
+        # TODO: 使用cv2.imdecode()函数从指定的内存缓存中读取数据，并把数据转换(解码)成彩色图像格式。
+        image = cv2.imdecode(image, cv2.IMREAD_COLOR)
+        # TODO: 使用cv2.resize()将图像缩放为512*512大小，其中所采用的插值方式为：区域插值
+        image = cv2.resize(image, (512, 512), interpolation=cv2.INTER_AREA)
+        # TODO: 使用cv2.cvtColor将图片从BGR格式转换成RGB格式
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # TODO: 将image从numpy形式转换为torch.float32,并将其归一化为[0,1]
+        image = torch.from_numpy(image).type(torch.float32) / 255.0
+        # TODO: 用permute函数将tensor从HxWxC转换为CxHxW
+        image = image.permute(2, 0, 1)
+        return image
 
-        with tf.Session(config=config) as sess:
-            sess.run(tf.global_variables_initializer())
-            input_tensor = sess.graph.get_tensor_by_name('X_content:0')
-            output_tensor = sess.graph.get_tensor_by_name('add_37:0')
-            batch_size = 1
-            # TODO：读入的输入图像的数据格式为 HWC，还需要将其转换成 NHWC
-            batch_shape = (batch_size, ) + img_shape
-            num_iters = int(len(paths_out)/batch_size)
-            for i in range(num_iters):
-                pos = i * batch_size
-                curr_batch_out = paths_out[pos:pos+batch_size]
-                # TODO：如果 data_in 是保存输入图像的文件路径，则依次将该批次中输入图像文件路径下的 batch_size 张图像读入数组 X；
-                # 如果 data_in 是已经读入图像并转化成数组形式的数据，则将该数组传递给 X
-                if is_paths:
-                    curr_batch_in = data_in[pos:pos+batch_size]
-                    X = np.zeros(batch_shape)
-                    #print(X.shape)
-                    for j, path in enumerate(curr_batch_in):
-                        img = get_img(path, img_shape)
-                        X[j] = img
-                else:
-                    X = data_in[pos:pos+batch_size]
-                
-                start = time.time()
-                # TODO: 使用 sess.run 来计算 output_tensor
-                _preds = sess.run(output_tensor, feed_dict={input_tensor:X})
-                end = time.time()
-                for j, path_out in enumerate(curr_batch_out):
-                #TODO：在该批次下调用 utils.py 中的 save_img() 函数对所有风格迁移后的图片进行存储
-                    save_img(path_out, _preds[j])
-                delta_time = end - start	
-                print("Inference (CPU) processing time: %s" % delta_time)  
+class ResBlock(nn.Module):
 
-def ffwd_to_img(in_path, out_path, model, device='/cpu:0'):
-    paths_in, paths_out = [in_path], [out_path]
-    ffwd(paths_in, paths_out, model, batch_size=1, device_t=device)
+    def __init__(self, c):
+        super(ResBlock, self).__init__()
+        self.layer = nn.Sequential(
+            # 进行卷积，卷积核为3x3，保持通道数不变
+            nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1, bias=False),
+            # 执行实例归一化
+            nn.InstanceNorm2d(c),
+            # 执行ReLU
+            nn.ReLU(inplace=True),
+            # 进行卷积，卷积核为3x3，保持通道数不变
+            nn.Conv2d(c, c, kernel_size=3, stride=1, padding=1, bias=False),
+            # 执行实例归一化
+            nn.InstanceNorm2d(c)
+        )
+        
+    def forward(self, x):
+        #TODO: 返回残差运算的结果
+        return x + self.layer(x)
 
-def ffwd_different_dimensions(in_path, out_path, model, 
-            device_t=DEVICE, batch_size=4):
-    in_path_of_shape = defaultdict(list)
-    out_path_of_shape = defaultdict(list)
-    for i in range(len(in_path)):
-        in_image = in_path[i]
-        out_image = out_path[i]
-        shape = "%dx%dx%d" % get_img(in_image).shape
-        in_path_of_shape[shape].append(in_image)
-        out_path_of_shape[shape].append(out_image)
-    for shape in in_path_of_shape:
-        print('Processing images of shape %s' % shape)
-        ffwd(in_path_of_shape[shape], out_path_of_shape[shape], 
-            model, device_t, batch_size)
 
-def build_parser():
-    parser = ArgumentParser()
-    parser.add_argument('--model', type=str,
-                        dest='model',
-                        help='dir or .pb file to load model',
-                        metavar='MODEL', required=True)  
+class TransNet(nn.Module):
 
-    parser.add_argument('--in-path', type=str,
-                        dest='in_path',help='dir or file to transform',
-                        metavar='IN_PATH', required=True)
+    def __init__(self):
+        super(TransNet, self).__init__()
+        self.layer = nn.Sequential(
+            # 下采样层
+            # 第一层卷积
+            nn.Conv2d(3, 32, kernel_size=9, stride=1, padding=3, bias=False),
+            # 实例归一化
+            nn.InstanceNorm2d(32),
+            # 创建激活函数ReLU
+            nn.ReLU(inplace=True),
+            # 第二层卷积
+            nn.Conv2d(32, 64, kernel_size=3, stride=2, padding=1, bias=False),
+            # 实例归一化
+            nn.InstanceNorm2d(64),
+            # 创建激活函数ReLU
+            nn.ReLU(inplace=True),
+            # 第三层卷积
+            nn.Conv2d(64, 128, kernel_size=3, stride=2, padding=1, bias=False),
+            # 实例归一化
+            nn.InstanceNorm2d(128),
+            # 创建激活函数ReLU
+            nn.ReLU(inplace=True),
 
-    help_out = 'destination (dir or file) of transformed file or files'
-    parser.add_argument('--out-path', type=str,
-                        dest='out_path', help=help_out, metavar='OUT_PATH',
-                        required=True)
+            # 残差层
+            ResBlock(128),
+            ResBlock(128),
+            ResBlock(128),
+            ResBlock(128),
+            ResBlock(128),
 
-    parser.add_argument('--device', type=str,
-                        dest='device',help='device to perform compute on',
-                        metavar='DEVICE', default=DEVICE)
+            # 上采样层
+            # 使用torch.nn.Upsample对特征图进行上采样
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            # 执行卷积操作
+            nn.Conv2d(128, 64, kernel_size=3, stride=1, padding=1, bias=False),
+            # 实例归一化
+            nn.InstanceNorm2d(64),
+            # 执行ReLU操作
+            nn.ReLU(inplace=True),
 
-    parser.add_argument('--batch-size', type=int,
-                        dest='batch_size',help='batch size for feedforwarding',
-                        metavar='BATCH_SIZE', default=BATCH_SIZE)
+            # 使用torch.nn.Upsample对特征图进行上采样
+            nn.Upsample(scale_factor=2, mode='nearest'),
+            # 执行卷积操作
+            nn.Conv2d(64, 32, kernel_size=3, stride=1, padding=1, bias=False),
+            # 实例归一化
+            nn.InstanceNorm2d(32),
+            # 执行ReLU操作
+            nn.ReLU(inplace=True),
+            
+            # 输出层
+            # 执行卷积操作
+            nn.Conv2d(32, 3, kernel_size=9, stride=1, padding=3),
+            # sigmoid激活函数
+            nn.Sigmoid()
+        )
 
-    parser.add_argument('--allow-different-dimensions', action='store_true',
-                        dest='allow_different_dimensions', 
-                        help='allow different image dimensions')
+    def forward(self, x):
+        return self.layer(x)
+    
 
-    return parser
-
-def check_opts(opts):
-    exists(opts.model, 'Model not found!')
-    exists(opts.in_path, 'In path not found!')
-    if os.path.isdir(opts.out_path):
-        exists(opts.out_path, 'out dir not found!')
-        assert opts.batch_size > 0
-
-def main():
-    parser = build_parser()
-    opts = parser.parse_args()
-    check_opts(opts)
-
-    if not os.path.isdir(opts.in_path):
-        if os.path.exists(opts.out_path) and os.path.isdir(opts.out_path):
-            out_path = os.path.join(opts.out_path,os.path.basename(opts.in_path))
-        else:
-            out_path = opts.out_path
-        # 执行风格迁移预测，输入图像为 opts.in_path，转换后的图像为 out_path，模型文件路径为 opts.model    
-        ffwd_to_img(opts.in_path, out_path, opts.model, device=opts.device)
-    else:
-        files = list_files(opts.in_path)
-        full_in = [os.path.join(opts.in_path,x) for x in files]
-        full_out = [os.path.join(opts.out_path,x) for x in files]
-        if opts.allow_different_dimensions:
-            ffwd_different_dimensions(full_in, full_out, opts.model, 
-                    device_t=opts.device, batch_size=opts.batch_size)
-        else :
-            # 执行风格迁移预测，输入图像的保存路径为 full_in，转换后的图像为 full_out，模型文件路径为 opts.model
-            ffwd(full_in, full_out, opts.model, device_t=opts.device, batch_size=opts.batch_size)
 
 if __name__ == '__main__':
-    main()
+    # TODO: 使用cpu生成图像转换网络模型并保存在g_net中
+    g_net = TransNet()
+    # TODO: 从/models文件夹下加载网络参数到g_net中
+    g_net.load_state_dict(torch.load("./models/fst.pth"))
+    print("g_net build  PASS!\n")
+    data_set = COCODataSet()
+    print("load COCODataSet PASS!\n")
+
+    batch_size = 1
+    data_group = DataLoader(data_set,batch_size,True,drop_last=True)
+
+    for i, image in enumerate(data_group):
+        image_c = image.cpu()
+        #print(image_c.shape)
+        start = time.time()
+        # TODO: 计算 g_net,得到image_g
+        image_g = g_net(image)
+        end = time.time()
+        delta_time = end - start
+        print("Inference (CPU) processing time: %s" % delta_time)
+        #TODO: 利用save_image函数将tensor形式的生成图像image_g以及输入图像image_c以jpg格式左右拼接的形式保存在/out/cpu/文件夹下
+        if image_c.shape != image_g.shape:
+            # 调整 image_g_mlu 的尺寸以匹配 image_c
+            image_g = F.interpolate(image_g, size=image_c.shape[2:], mode='bilinear', align_corners=False)
+        
+        save_image(torch.cat((image_c, image_g), -1), f"./out/mlu_cnnl_mfus/image_{i}.jpg")
+    print("TEST RESULT PASS!\n")

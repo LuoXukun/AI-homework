@@ -1,0 +1,5 @@
+补全tacotron2_inference/src/tacotron2/model.py以及tacotron2_inference/src/test_infer.py文件。
+
+进入tacotron2_inference/src实验目录，运行python test_atten.py来验证位置敏感注意力机制的正确性。
+
+进入tacotron2_inference目录，运行bash tacotron2_infer.sh实现推理
